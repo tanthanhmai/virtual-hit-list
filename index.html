@@ -2,41 +2,51 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Virtual Screening Hits Hub</title>
+    <title>CADD Virtual Screening Portfolio</title>
+    <script src="https://unpkg.com/@rdkit/rdkit@2023.09.4/dist/RDKit_minimal.js"></script>
     <style>
         :root { --primary: #1e293b; --accent: #0ea5e9; --bg: #f8fafc; --text: #334155; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg); color: var(--text); }
-        #sidebar { width: 260px; background: var(--primary); color: white; padding: 25px 20px; box-shadow: 2px 0 10px rgba(0,0,0,0.05); z-index: 10; }
+        
+        /* Màn hình chờ RDKit */
+        #rdkit-loader { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        #sidebar { width: 260px; background: var(--primary); color: white; padding: 25px 20px; z-index: 10; }
         #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         .header { padding: 20px 30px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: white; }
-        #table-area { flex: 1; overflow-y: auto; padding: 20px 30px; background: white; border-right: 1px solid #e2e8f0; }
+        #table-area { flex: 1; overflow-y: auto; padding: 20px 30px; background: white; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
         th { background: #f1f5f9; padding: 14px 12px; text-align: left; position: sticky; top: 0; color: #64748b; text-transform: uppercase; font-size: 12px; font-weight: 700; border-bottom: 2px solid #e2e8f0; }
         td { padding: 14px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: 0.2s; }
         tr:hover { background: #f0f9ff; }
         tr.active-row { background: #e0f2fe; border-left: 3px solid var(--accent); }
-        #viewer { width: 400px; background: #f8fafc; padding: 30px; display: flex; flex-direction: column; align-items: center; overflow-y: auto; }
+        #viewer { width: 400px; background: #f8fafc; padding: 30px; display: flex; flex-direction: column; align-items: center; overflow-y: auto; border-left: 1px solid #e2e8f0; }
         .mol-card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; box-sizing: border-box; text-align: center; border: 1px solid #e2e8f0; }
-        .img-container { width: 100%; height: 300px; display: flex; justify-content: center; align-items: center; background: white; border-radius: 8px; margin-bottom: 20px; position: relative; }
-        img#mol-image { max-width: 100%; max-height: 100%; object-fit: contain; }
+        canvas { background: white; border-radius: 8px; margin-bottom: 20px; max-width: 100%; height: auto; border: 1px solid #e2e8f0; }
         .badge { background: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-family: monospace; font-size: 13px; }
         #error-msg { color: #ef4444; font-weight: bold; padding: 20px; text-align: center; display: none; }
     </style>
 </head>
 <body>
 
+<div id="rdkit-loader">
+    <div class="spinner"></div>
+    <h3 style="margin:0; color: var(--primary);">Khởi động RDKit Engine...</h3>
+    <p style="color: #64748b; font-size: 14px;">Đang tải WebAssembly (khoảng 2MB). Quá trình này chỉ diễn ra ở lần truy cập đầu tiên.</p>
+</div>
+
 <div id="sidebar">
     <h2 style="font-size: 1.1rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-top:0;">Campaigns</h2>
     <div id="project-label" style="padding:12px 15px; background: rgba(255,255,255,0.1); border-radius:8px; margin-top: 20px; font-weight: 600; border-left: 4px solid var(--accent);">
-        Loading Project...
+        Loading...
     </div>
 </div>
 
 <div id="main">
     <div class="header">
-        <div>
-            <h2 id="main-title" style="margin:0; font-size: 1.5rem; color: var(--primary);">Virtual Screening Portfolio</h2>
-        </div>
+        <h2 id="main-title" style="margin:0; font-size: 1.5rem; color: var(--primary);">Virtual Screening Portfolio</h2>
     </div>
     
     <div id="error-msg">❌ Không tìm thấy dữ liệu dự án này. Vui lòng kiểm tra lại đường dẫn.</div>
@@ -59,25 +69,45 @@
 <div id="viewer">
     <div class="mol-card">
         <h3 id="mol-id" style="margin-top:0; color:var(--primary); font-size: 1.3rem;">Select a Hit</h3>
-        <div class="img-container">
-            <div id="loading-text" style="position: absolute; color: #94a3b8; font-size: 14px; display: none;">Drawing structure...</div>
-            <img id="mol-image" src="" alt="Molecule 2D Structure">
-        </div>
+        
+        <canvas id="mol-canvas" width="300" height="300"></canvas>
+        
         <div id="mol-details" style="text-align: left; font-size: 14px; color: #475569; line-height: 1.8;"></div>
     </div>
 </div>
 
 <script>
+    let RDKitModule = null;
     let hitsData = [];
 
+    // BƯỚC 1: KHỞI TẠO RDKIT TRƯỚC KHI ĐỌC DATA
+    window.onload = function() {
+        window.initRDKitModule({
+            // Ép trình duyệt tìm file wasm ở đúng địa chỉ này
+            locateFile: function() {
+                return 'https://unpkg.com/@rdkit/rdkit@2023.09.4/dist/RDKit_minimal.wasm';
+            }
+        }).then(function(instance) {
+            RDKitModule = instance;
+            document.getElementById('rdkit-loader').style.display = 'none'; // Tắt màn hình loading
+            loadProjectData(); // Bắt đầu đọc file JSON
+        }).catch(function(err) {
+            document.getElementById('rdkit-loader').innerHTML = `
+                <h3 style="color:#ef4444;">❌ Lỗi tải RDKit Engine</h3>
+                <p>Chi tiết lỗi: ${err}</p>
+                <button onclick="location.reload()" style="padding:10px 20px; cursor:pointer;">Thử lại</button>
+            `;
+            console.error(err);
+        });
+    };
+
+    // BƯỚC 2: ĐỌC FILE JSON TỪ THƯ MỤC DATA (Giữ nguyên logic cũ)
     function loadProjectData() {
-        // 1. Đọc tham số từ URL (ví dụ: ?project=t2dm_hits)
         const urlParams = new URLSearchParams(window.location.search);
-        const projectName = urlParams.get('project') || 't2dm_hits'; // Mặc định tải t2dm_hits nếu không truyền tham số
+        const projectName = urlParams.get('project') || 't2dm_hits'; 
         
         document.getElementById('project-label').innerText = "🎯 " + projectName.replace(/_/g, ' ').toUpperCase();
 
-        // 2. Tự động tìm nạp file JSON tương ứng trong thư mục data/
         fetch(`data/${projectName}.json`)
             .then(response => {
                 if (!response.ok) throw new Error('File not found');
@@ -85,16 +115,16 @@
             })
             .then(data => {
                 hitsData = data;
-                initApp();
+                initTable();
             })
             .catch(err => {
-                console.error(err);
                 document.getElementById('error-msg').style.display = 'block';
                 document.getElementById('table-area').style.display = 'none';
             });
     }
 
-    function initApp() {
+    // BƯỚC 3: ĐỔ DỮ LIỆU RA BẢNG
+    function initTable() {
         const tbody = document.getElementById('table-body');
         tbody.innerHTML = '';
 
@@ -116,6 +146,7 @@
         }
     }
 
+    // BƯỚC 4: VẼ CẤU TRÚC BẰNG RDKIT
     function renderMolecule(hit, rowElement) {
         document.querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
         if(rowElement) rowElement.classList.add('active-row');
@@ -129,18 +160,32 @@
             <div style="margin-top:15px;"><b style="font-size:12px; color:#94a3b8;">SMILES:</b><div style="background:#f1f5f9; padding:8px; border-radius:6px; margin-top:5px; font-family:monospace; font-size:11px; word-break:break-all;">${hit.smiles}</div></div>
         `;
 
-        const imgEl = document.getElementById('mol-image');
-        const loadingText = document.getElementById('loading-text');
-        imgEl.style.opacity = '0.3'; 
-        loadingText.style.display = 'block';
-
-        const safeSmiles = encodeURIComponent(hit.smiles);
-        imgEl.onload = () => { imgEl.style.opacity = '1'; loadingText.style.display = 'none'; };
-        imgEl.onerror = () => { loadingText.innerText = "Lỗi hiển thị"; imgEl.style.opacity = '0'; };
-        imgEl.src = `https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=${safeSmiles}&w=300&h=300`;
+        // Dùng RDKit vẽ trực tiếp lên Canvas
+        const canvas = document.getElementById('mol-canvas');
+        try {
+            const mol = RDKitModule.get_mol(hit.smiles);
+            
+            // Cấu hình nét vẽ chuyên nghiệp
+            const drawOptions = {
+                width: 300,
+                height: 300,
+                bondLineWidth: 2.0,      // Làm đậm liên kết
+                multipleBondOffset: 0.2, // Tách rõ liên kết đôi
+                addStereoAnnotation: true, // Hiển thị lập thể
+                clearBackground: true
+            };
+            
+            mol.draw_to_canvas_with_highlights(canvas, JSON.stringify(drawOptions));
+            mol.delete(); // Xóa khỏi bộ nhớ sau khi vẽ xong
+        } catch (error) {
+            console.error("Lỗi vẽ SMILES bằng RDKit:", error);
+            const ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = "14px Arial";
+            ctx.fillStyle = "red";
+            ctx.fillText("Lỗi cấu trúc SMILES", 50, 150);
+        }
     }
-
-    window.onload = loadProjectData;
 </script>
 
 </body>
