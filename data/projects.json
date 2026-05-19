@@ -1,6 +1,6 @@
 [
   { "id": "ox1r_hits", "name": "Orexin 1 Receptor" },
   { "id": "glp1r_hits", "name": "GLP-1 Receptor" },
-  { "id": "pdl1_hits", "name": "PD-L1" }
+  { "id": "pdl1_hits", "name": "PD-L1" },
   { "id": "il17a_hits", "name": "Interleukin-17A" }
 ]
