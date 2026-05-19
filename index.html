@@ -23,18 +23,19 @@
         .btn-export:hover { background: #0284c7; }
         
         /* Table */
-        #table-area { flex: 1; overflow-y: auto; padding: 20px 30px; background: white; }
+        #table-area { flex: 1; overflow-y: auto; padding: 0 30px 20px 30px; background: white; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th { background: #f1f5f9; padding: 14px 12px; text-align: left; position: sticky; top: 0; color: #64748b; text-transform: uppercase; font-size: 12px; border-bottom: 2px solid #e2e8f0; cursor: pointer; user-select: none; transition: 0.2s; }
+        th { background: #f8fafc; padding: 14px 12px; text-align: left; position: sticky; top: 0; color: #64748b; text-transform: uppercase; font-size: 12px; border-bottom: 2px solid #e2e8f0; cursor: pointer; user-select: none; transition: 0.2s; z-index: 2; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
         th:hover { background: #e2e8f0; color: var(--primary); }
-        td { padding: 14px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: 0.2s; }
+        td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: 0.2s; vertical-align: middle; }
         tr:hover td { background: #f0f9ff; }
         tr.active-row td { background: #e0f2fe; border-left: 3px solid var(--accent); }
-        .badge { background: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-family: monospace; font-size: 13px; }
+        .badge { background: #f1f5f9; color: #475569; padding: 6px 10px; border-radius: 6px; font-weight: bold; font-family: monospace; font-size: 13px; border: 1px solid #e2e8f0;}
+        .thumb-img { width: 70px; height: 70px; object-fit: contain; mix-blend-mode: multiply; }
         
         /* Detail Viewer */
         #viewer { width: 420px; background: #f8fafc; padding: 30px; display: flex; flex-direction: column; align-items: center; border-left: 1px solid #e2e8f0; overflow-y: auto;}
-        .mol-card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; box-sizing: border-box; text-align: center; border: 1px solid #e2e8f0; }
+        .mol-card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; box-sizing: border-box; text-align: center; border: 1px solid #e2e8f0; position: sticky; top: 0;}
         img.mol-img { width: 100%; max-width: 350px; height: auto; margin-bottom: 20px; border-radius: 8px; }
         #error-msg { color: #ef4444; font-weight: bold; padding: 20px; text-align: center; display: none; }
     </style>
@@ -42,7 +43,7 @@
 <body>
 
 <div id="sidebar">
-    <h2 style="margin-top:0; color:#94a3b8; font-size:1.1rem; text-transform:uppercase;">Campaigns</h2>
+    <h2 style="margin-top:0; color:#94a3b8; font-size:1.1rem; text-transform:uppercase; letter-spacing:1px;">Campaigns</h2>
     <div id="menu-container">
         <div class="menu-item active" id="fallback-menu">🎯 Đang tải...</div>
     </div>
@@ -52,7 +53,7 @@
     <div class="header">
         <h2 style="margin:0; font-size: 1.5rem; color: var(--primary);">Virtual Screening Dashboard</h2>
         <div class="header-actions">
-            <input type="text" id="search-input" class="search-bar" placeholder="🔍 TÌm Compound ID..." onkeyup="filterTable()">
+            <input type="text" id="search-input" class="search-bar" placeholder="🔍 TÌm ID hoặc SMILES..." onkeyup="filterTable()">
             <button class="btn-export" onclick="exportCSV()">⬇ Tải CSV</button>
         </div>
     </div>
@@ -84,12 +85,9 @@
     const urlParams = new URLSearchParams(window.location.search);
     const currentProject = urlParams.get('project') || 'hitlist_1'; 
 
-    // --- HÀM TIỆN ÍCH LÀM TRÒN SỐ ---
     function formatNumber(val) {
         if (val === null || val === undefined || val === '') return '-';
-        if (!isNaN(val) && val.toString().indexOf('.') !== -1) {
-            return parseFloat(val).toFixed(3); // Làm tròn 3 chữ số thập phân
-        }
+        if (!isNaN(val) && val.toString().indexOf('.') !== -1) return parseFloat(val).toFixed(3);
         return val;
     }
 
@@ -120,13 +118,12 @@
             document.getElementById('table-area').style.display = 'none';
         });
 
-    // 3. VẼ BẢNG
+    // 3. VẼ BẢNG VÀ TIÊU ĐỀ
     function initDynamicTable() {
         if(hitsData.length === 0) return;
         
-        // Dọn dẹp các cột không cần thiết hiện ở bảng chính
         const excludeCols = ['mol_image', 'id', 'smiles']; 
-        currentHeaders = ['Compound ID']; 
+        currentHeaders = []; 
         
         const firstRow = hitsData[0];
         for(let key in firstRow) {
@@ -140,6 +137,21 @@
     function renderHeaders() {
         const theadRow = document.getElementById('table-head-row');
         theadRow.innerHTML = '';
+        
+        // Cột ID cứng
+        const thId = document.createElement('th');
+        thId.innerText = 'Compound ID' + (sortCol === 'id' ? (sortAsc ? ' ▲' : ' ▼') : '');
+        thId.onclick = () => sortTable('id');
+        theadRow.appendChild(thId);
+
+        // Cột Structure cứng (Không có tính năng sort)
+        const thStruct = document.createElement('th');
+        thStruct.innerText = 'Structure';
+        thStruct.style.cursor = 'default';
+        thStruct.style.textAlign = 'center';
+        theadRow.appendChild(thStruct);
+
+        // Các cột thông số động
         currentHeaders.forEach(h => {
             const th = document.createElement('th');
             let icon = '';
@@ -158,15 +170,20 @@
             const tr = document.createElement('tr');
             tr.id = `row-${index}`;
             
-            // Xử lý ID
             let displayId = '';
             for(let key in hit) { if(key.toLowerCase() === 'id') { displayId = hit[key]; break; } }
             if(!displayId) displayId = `HIT_${index+1}`;
             
             let rowHtml = `<td><span class="badge">${displayId}</span></td>`;
             
-            // Xử lý các cột còn lại (Làm tròn số)
-            currentHeaders.slice(1).forEach(key => {
+            // Render cột ảnh thu nhỏ
+            let thumbHtml = hit.mol_image 
+                ? `<img src="${hit.mol_image}" class="thumb-img">` 
+                : `<span style="color:#cbd5e1; font-size:12px;">N/A</span>`;
+            rowHtml += `<td style="text-align:center;">${thumbHtml}</td>`;
+            
+            // Render các cột thông số
+            currentHeaders.forEach(key => {
                 const val = formatNumber(hit[key]);
                 if(key.toLowerCase().includes('energy') || key.toLowerCase().includes('score') || key.toLowerCase().includes('pic50')) {
                     rowHtml += `<td style="color:#0369a1; font-weight:700;">${val}</td>`;
@@ -180,7 +197,6 @@
             tbody.appendChild(tr);
         });
 
-        // Tự động load phân tử đầu tiên nếu có dữ liệu
         if(dataToRender.length > 0) {
             let firstId = '';
             for(let key in dataToRender[0]) { if(key.toLowerCase() === 'id') { firstId = dataToRender[0][key]; break; } }
@@ -191,20 +207,14 @@
 
     // 4. SẮP XẾP BẢNG
     function sortTable(header) {
-        if (sortCol === header) {
-            sortAsc = !sortAsc; 
-        } else {
-            sortCol = header;
-            sortAsc = true;
-        }
+        if (sortCol === header) { sortAsc = !sortAsc; } 
+        else { sortCol = header; sortAsc = true; }
         
         const sortedData = [...hitsData].sort((a, b) => {
-            let valA = header === 'Compound ID' ? (a.id || a.ID || '') : a[header];
-            let valB = header === 'Compound ID' ? (b.id || b.ID || '') : b[header];
+            let valA = header === 'id' ? (a.id || a.ID || '') : a[header];
+            let valB = header === 'id' ? (b.id || b.ID || '') : b[header];
             
-            if (!isNaN(valA) && !isNaN(valB)) {
-                return sortAsc ? valA - valB : valB - valA;
-            }
+            if (!isNaN(valA) && !isNaN(valB)) { return sortAsc ? valA - valB : valB - valA; }
             valA = valA ? valA.toString().toLowerCase() : '';
             valB = valB ? valB.toString().toLowerCase() : '';
             if (valA < valB) return sortAsc ? -1 : 1;
@@ -214,45 +224,52 @@
         
         renderHeaders();
         renderTableBody(sortedData);
-        // Reset thanh tìm kiếm khi sort
-        document.getElementById('search-input').value = '';
     }
 
-    // 5. TÌM KIẾM THEO ID
+    // 5. TÌM KIẾM
     function filterTable() {
         const input = document.getElementById('search-input').value.toLowerCase();
         const filteredData = hitsData.filter(hit => {
-            let displayId = '';
-            for(let key in hit) { if(key.toLowerCase() === 'id') { displayId = hit[key]; break; } }
-            return displayId.toString().toLowerCase().includes(input);
+            let displayId = ''; let smiles = '';
+            for(let key in hit) { 
+                if(key.toLowerCase() === 'id') displayId = hit[key]; 
+                if(key.toLowerCase() === 'smiles') smiles = hit[key]; 
+            }
+            return displayId.toString().toLowerCase().includes(input) || smiles.toString().toLowerCase().includes(input);
         });
         renderTableBody(filteredData);
     }
 
-    // 6. XUẤT CSV
+    // 6. XUẤT CSV (Lọc bỏ hình ảnh base64 ra khỏi file tải về)
     function exportCSV() {
         if(hitsData.length === 0) return;
-        let csv = currentHeaders.join(',') + '\n';
+        let csvCols = ['Compound ID', ...currentHeaders, 'SMILES'];
+        let csv = csvCols.join(',') + '\n';
         hitsData.forEach(hit => {
             let row = [];
+            
+            let displayId = ''; let smiles = '';
+            for(let key in hit) { 
+                if(key.toLowerCase() === 'id') displayId = hit[key]; 
+                if(key.toLowerCase() === 'smiles') smiles = hit[key]; 
+            }
+            row.push(`"${displayId}"`);
+
             currentHeaders.forEach(header => {
-                let val = header === 'Compound ID' ? (hit.id || hit.ID || '') : hit[header];
-                row.push(`"${val}"`);
+                row.push(`"${hit[header] !== null && hit[header] !== undefined ? hit[header] : ''}"`);
             });
+            row.push(`"${smiles}"`);
+            
             csv += row.join(',') + '\n';
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `${currentProject}_export.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
+        link.href = URL.createObjectURL(blob);
+        link.download = `${currentProject}_export.csv`;
         link.click();
-        document.body.removeChild(link);
     }
 
-    // 7. HIỂN THỊ CHI TIẾT
+    // 7. HIỂN THỊ CHI TIẾT BÊN PHẢI
     function renderMolecule(hit, rowElement, displayId, headers) {
         document.querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
         if(rowElement) rowElement.classList.add('active-row');
@@ -269,18 +286,14 @@
         
         let detailsHtml = '<hr style="border:0; border-top:1px dashed #cbd5e1; margin:15px 0;">';
         
-        // Chỉ in ra các thông số điểm (Lọc bỏ ID và SMILES bị trùng lặp)
-        headers.slice(1).forEach(key => {
-            if (key.toLowerCase() !== 'id' && key.toLowerCase() !== 'smiles') {
-                const val = formatNumber(hit[key]);
-                detailsHtml += `<div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                                    <span style="text-transform:capitalize;"><b>${key}:</b></span>
-                                    <span style="color:#0f172a;">${val}</span>
-                                </div>`;
-            }
+        headers.forEach(key => {
+            const val = formatNumber(hit[key]);
+            detailsHtml += `<div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                                <span style="text-transform:capitalize;"><b>${key}:</b></span>
+                                <span style="color:#0f172a;">${val}</span>
+                            </div>`;
         });
 
-        // Tách biệt SMILES xuống cuối cùng, highlight đẹp mắt
         let smilesVal = '';
         for(let key in hit) { if(key.toLowerCase() === 'smiles') { smilesVal = hit[key]; break; } }
         
