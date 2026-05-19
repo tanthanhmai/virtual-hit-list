@@ -2,35 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Virtual Screening Hits Portfolio</title>
+    <title>CADD Virtual Screening Portfolio</title>
     <style>
         :root { --primary: #1e293b; --accent: #0ea5e9; --bg: #f8fafc; --text: #334155; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg); color: var(--text); }
-        
-        /* Layout Sidebar & Main */
         #sidebar { width: 260px; background: var(--primary); color: white; padding: 25px 20px; box-shadow: 2px 0 10px rgba(0,0,0,0.05); z-index: 10; }
         #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        
-        /* Header & Table */
         .header { padding: 20px 30px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: white; }
         #table-area { flex: 1; overflow-y: auto; padding: 20px 30px; background: white; border-right: 1px solid #e2e8f0; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th { background: #f1f5f9; padding: 14px 12px; text-align: left; position: sticky; top: 0; color: #64748b; text-transform: uppercase; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; border-bottom: 2px solid #e2e8f0; }
+        th { background: #f1f5f9; padding: 14px 12px; text-align: left; position: sticky; top: 0; color: #64748b; text-transform: uppercase; font-size: 12px; font-weight: 700; border-bottom: 2px solid #e2e8f0; }
         td { padding: 14px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: 0.2s; }
         tr:hover { background: #f0f9ff; }
         tr.active-row { background: #e0f2fe; border-left: 3px solid var(--accent); }
-        
-        /* Viewer Panel */
         #viewer { width: 400px; background: #f8fafc; padding: 30px; display: flex; flex-direction: column; align-items: center; overflow-y: auto; }
         .mol-card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; box-sizing: border-box; text-align: center; border: 1px solid #e2e8f0; }
-        
-        /* Image Container */
         .img-container { width: 100%; height: 300px; display: flex; justify-content: center; align-items: center; background: white; border-radius: 8px; margin-bottom: 20px; position: relative; }
-        img#mol-image { max-width: 100%; max-height: 100%; object-fit: contain; transition: opacity 0.3s ease; }
-        
-        /* Buttons & Badges */
-        .btn-export { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; box-shadow: 0 4px 6px rgba(14, 165, 233, 0.2); }
-        .btn-export:hover { transform: translateY(-1px); box-shadow: 0 6px 12px rgba(14, 165, 233, 0.3); }
+        img#mol-image { max-width: 100%; max-height: 100%; object-fit: contain; }
         .badge { background: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-family: monospace; font-size: 13px; }
     </style>
 </head>
@@ -39,7 +27,7 @@
 <div id="sidebar">
     <h2 style="font-size: 1.1rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-top:0;">Portfolio</h2>
     <div style="padding:12px 15px; background: rgba(255,255,255,0.1); border-radius:8px; margin-top: 20px; font-weight: 600; border-left: 4px solid var(--accent);">
-        🎯 Project: T2DM Inhibitors
+        🎯 ZINC Database Hits
     </div>
 </div>
 
@@ -47,9 +35,7 @@
     <div class="header">
         <div>
             <h2 style="margin:0; font-size: 1.5rem; color: var(--primary);">Top Virtual Screening Hits</h2>
-            <div style="font-size: 0.9rem; color: #64748b; margin-top: 5px;">Sorted by Binding Affinity</div>
         </div>
-        <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
     </div>
     
     <div id="table-area">
@@ -62,8 +48,7 @@
                     <th>LogP</th>
                 </tr>
             </thead>
-            <tbody id="table-body">
-                </tbody>
+            <tbody id="table-body"></tbody>
         </table>
     </div>
 </div>
@@ -71,49 +56,27 @@
 <div id="viewer">
     <div class="mol-card">
         <h3 id="mol-id" style="margin-top:0; color:var(--primary); font-size: 1.3rem;">Select a Hit</h3>
-        
         <div class="img-container">
             <div id="loading-text" style="position: absolute; color: #94a3b8; font-size: 14px; display: none;">Drawing structure...</div>
             <img id="mol-image" src="" alt="Molecule 2D Structure">
         </div>
-
-        <div id="mol-details" style="text-align: left; font-size: 14px; color: #475569; line-height: 1.8;">
-            </div>
+        <div id="mol-details" style="text-align: left; font-size: 14px; color: #475569; line-height: 1.8;"></div>
     </div>
 </div>
 
 <script>
-    // --- DỮ LIỆU CỦA BẠN ---
-    // Vì không dùng RDKit tính toán trực tiếp, các thông số hóa lý (MW, LogP) 
-    // bạn sẽ cung cấp thẳng vào data (thường có sẵn trong file kết quả Docking)
+    // Dữ liệu mẫu ban đầu (Sau này bạn sẽ thay bằng dữ liệu thật của mình)
     const hitsData = [
-        { id: "MOL_001", smiles: "c1ccccc1", energy: -10.5, mw: 78.11, logp: 2.13 },
-        { id: "MOL_002", smiles: "CN1C=NC2=C1C(=O)N(C(=O)N2C)C", energy: -9.8, mw: 194.19, logp: -0.07 },
-        { id: "MOL_003", smiles: "CC(=O)Oc1ccccc1C(=O)O", energy: -9.2, mw: 180.16, logp: 1.19 },
-        { id: "MOL_004", smiles: "CC12CCC3C(C1CCC2O)CCC4=CC(=O)CCC34C", energy: -8.7, mw: 288.42, logp: 3.32 },
-        { id: "MOL_005", smiles: "C1CN(CCN1)Cc2ccc(cc2)C(=O)O", energy: -8.1, mw: 220.27, logp: 0.85 },
-        { id: "MOL_006", smiles: "O=C(O)c1ccccc1O", energy: -7.5, mw: 138.12, logp: 1.30 },
-        { id: "MOL_007", smiles: "C1CCCCC1", energy: -6.8, mw: 84.16, logp: 2.89 }
+        { id: "ZINC_001", smiles: "c1ccccc1", energy: -10.5, mw: 78.11, logp: 2.13 },
+        { id: "ZINC_002", smiles: "CN1C=NC2=C1C(=O)N(C(=O)N2C)C", energy: -9.8, mw: 194.19, logp: -0.07 },
+        { id: "ZINC_003", smiles: "CC(=O)Oc1ccccc1C(=O)O", energy: -9.2, mw: 180.16, logp: 1.19 },
+        { id: "ZINC_004", smiles: "C1CN(CCN1)Cc2ccc(cc2)C(=O)O", energy: -8.1, mw: 220.27, logp: 0.85 }
     ];
 
-    // Tạo thêm vài chục phân tử giả để test giao diện cuộn (Scroll)
-    for(let i=8; i<=50; i++) {
-        hitsData.push({
-            id: "MOL_" + String(i).padStart(3, '0'),
-            smiles: "c1cc(ccc1)C(=O)O",
-            energy: (-6.5 - (Math.random() * 2)).toFixed(2),
-            mw: (150 + Math.random()*100).toFixed(2),
-            logp: (1.0 + Math.random()*3).toFixed(2)
-        });
-    }
-
-    // Hàm khởi tạo bảng
     function initApp() {
         const tbody = document.getElementById('table-body');
-        
-        hitsData.forEach((hit, index) => {
+        hitsData.forEach((hit) => {
             const tr = document.createElement('tr');
-            // Gắn id cho dòng để làm hiệu ứng highlight
             tr.id = `row-${hit.id}`;
             tr.innerHTML = `
                 <td><span class="badge">${hit.id}</span></td>
@@ -121,91 +84,36 @@
                 <td>${hit.mw}</td>
                 <td>${hit.logp}</td>
             `;
-            
             tr.onclick = () => renderMolecule(hit, tr);
             tbody.appendChild(tr);
         });
-
-        // Tự động load phân tử đầu tiên khi mở web
-        if(hitsData.length > 0) {
-            renderMolecule(hitsData[0], document.getElementById(`row-${hitsData[0].id}`));
-        }
+        if(hitsData.length > 0) renderMolecule(hitsData[0], document.getElementById(`row-${hitsData[0].id}`));
     }
 
-    // Hàm gọi API vẽ hình
     function renderMolecule(hit, rowElement) {
-        // Highlight dòng đang chọn
         document.querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
         if(rowElement) rowElement.classList.add('active-row');
 
-        // Cập nhật thông tin text
         document.getElementById('mol-id').innerText = hit.id;
         document.getElementById('mol-details').innerHTML = `
             <hr style="border:0; border-top:1px dashed #cbd5e1; margin:20px 0;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <span><b>Binding Affinity:</b></span>
-                <span style="color:var(--accent); font-weight:bold;">${hit.energy} kcal/mol</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <span><b>Molecular Weight:</b></span>
-                <span>${hit.mw} g/mol</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <span><b>LogP:</b></span>
-                <span>${hit.logp}</span>
-            </div>
-            <div style="margin-top:15px;">
-                <b style="font-size:12px; color:#94a3b8; text-transform:uppercase;">SMILES String:</b>
-                <div style="background:#f1f5f9; padding:8px; border-radius:6px; margin-top:5px; font-family:monospace; font-size:11px; word-break:break-all; border:1px solid #e2e8f0;">
-                    ${hit.smiles}
-                </div>
-            </div>
+            <div style="display:flex; justify-content:space-between;"><span><b>Affinity:</b></span><span style="color:var(--accent); font-weight:bold;">${hit.energy} kcal/mol</span></div>
+            <div style="display:flex; justify-content:space-between;"><span><b>MW:</b></span><span>${hit.mw}</span></div>
+            <div style="display:flex; justify-content:space-between;"><span><b>LogP:</b></span><span>${hit.logp}</span></div>
+            <div style="margin-top:15px;"><b style="font-size:12px; color:#94a3b8;">SMILES:</b><div style="background:#f1f5f9; padding:8px; border-radius:6px; margin-top:5px; font-family:monospace; font-size:11px; word-break:break-all;">${hit.smiles}</div></div>
         `;
 
-        // GỌI API CDK DEPICT ĐỂ VẼ ẢNH
         const imgEl = document.getElementById('mol-image');
         const loadingText = document.getElementById('loading-text');
-        
-        imgEl.style.opacity = '0.3'; // Làm mờ ảnh cũ trong lúc tải ảnh mới
+        imgEl.style.opacity = '0.3'; 
         loadingText.style.display = 'block';
 
-        // Encode SMILES an toàn để đưa vào URL
         const safeSmiles = encodeURIComponent(hit.smiles);
-        
-        // URL của CDK Depict API (bow = black on white, svg format)
-        const apiUrl = `https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=${safeSmiles}&w=300&h=300`;
-
-        imgEl.onload = function() {
-            imgEl.style.opacity = '1';
-            loadingText.style.display = 'none';
-        };
-        
-        imgEl.onerror = function() {
-            loadingText.innerText = "Lỗi: Không thể vẽ SMILES này";
-            imgEl.style.opacity = '0';
-        };
-
-        imgEl.src = apiUrl;
+        imgEl.onload = () => { imgEl.style.opacity = '1'; loadingText.style.display = 'none'; };
+        imgEl.onerror = () => { loadingText.innerText = "Lỗi hiển thị"; imgEl.style.opacity = '0'; };
+        imgEl.src = `https://www.simolecule.com/cdkdepict/depict/bow/svg?smi=${safeSmiles}&w=300&h=300`;
     }
 
-    // Hàm tải file CSV
-    function exportCSV() {
-        let csv = "Compound_ID,SMILES,Binding_Affinity,MW,LogP\n";
-        hitsData.forEach(h => csv += `${h.id},${h.smiles},${h.energy},${h.mw},${h.logp}\n`);
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        if (link.download !== undefined) {
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", "Virtual_Screening_Hits.csv");
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-    }
-
-    // Chạy khi tải trang xong
     window.onload = initApp;
 </script>
 
