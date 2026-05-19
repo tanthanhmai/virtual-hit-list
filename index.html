@@ -65,11 +65,37 @@
         'Rotatable Bonds': 'Rotatable Bonds', 'SA Score': 'Synthetic Accessibility Score'
     };
 
-    fetch(`data/${new URLSearchParams(window.location.search).get('project') || 'hitlist_1'}.json`).then(res => res.json()).then(data => {
-        hitsData = data;
-        currentHeaders = Object.keys(data[0]).filter(k => !['mol_image', 'id', 'smiles', 'ID', 'SMILES', 'MW', 'LogP', 'TPSA', 'HBD', 'HBA', 'Rotatable Bonds', 'SA Score'].includes(k));
-        renderHeaders(); renderTableBody(hitsData);
-    });
+    // 1. Khởi chạy: Load danh sách project từ file JSON
+    fetch('data/projects.json')
+        .then(res => res.json())
+        .then(projects => {
+            const container = document.getElementById('menu-container');
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentId = urlParams.get('project') || projects[0].id; // Mặc định project đầu tiên
+            
+            // Vẽ Menu Sidebar
+            projects.forEach(p => {
+                const div = document.createElement('div');
+                div.className = `menu-item ${p.id === currentId ? 'active' : ''}`;
+                div.innerText = p.name;
+                div.onclick = () => window.location.href = `?project=${p.id}`;
+                container.appendChild(div);
+            });
+
+            // 2. Load dữ liệu hits của project được chọn
+            return fetch(`data/${currentId}.json`);
+        })
+        .then(res => res.json())
+        .then(data => {
+            hitsData = data;
+            // Xác định header (trừ các cột không phải score)
+            currentHeaders = Object.keys(data[0]).filter(k => 
+                !['mol_image', 'id', 'smiles', 'ID', 'SMILES', 'MW', 'LogP', 'TPSA', 'HBD', 'HBA', 'Rotatable Bonds', 'SA Score'].includes(k)
+            );
+            renderHeaders(); 
+            renderTableBody(hitsData);
+        })
+        .catch(err => console.error("Error initializing:", err));
 
     function renderHeaders() {
         const row = document.getElementById('table-head-row');
@@ -97,11 +123,9 @@
         document.getElementById('mol-image').src = hit.mol_image; 
         document.getElementById('mol-image').style.display = 'block';
         
-        // 1. Scores trước
         let det = '';
         currentHeaders.forEach(h => det += `<div style="display:flex; justify-content:space-between; margin-bottom:5px; font-weight:600;"><span>${h}:</span><span>${hit[h]}</span></div>`);
         
-        // 2. Lý hóa sau (tên đầy đủ)
         det += '<div class="phys-box">';
         Object.keys(fullNames).forEach(k => {
             if(hit[k] !== undefined) det += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:13px;"><span>${fullNames[k]}:</span><b>${hit[k]}</b></div>`;
