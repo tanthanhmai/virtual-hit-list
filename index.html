@@ -59,6 +59,7 @@
 
 <script>
     let hitsData = [], currentHeaders = [];
+    let sortDirections = {};
     
     const detailOrder = [
         'Lipinski Rule', 'MW', 'LogP', 'TPSA', 'HBD', 'HBA', 'Rotatable Bonds', 
@@ -103,8 +104,24 @@
         const row = document.getElementById('table-head-row');
         row.innerHTML = '<th>ID</th><th class="col-struct">Structure</th>';
         currentHeaders.forEach(h => {
-            row.innerHTML += `<th>${h} <span style="font-size: 8px; color: #cbd5e1; display: inline-flex; flex-direction: column; vertical-align: middle; line-height: 5px;"><span>▲</span><span>▼</span></span></th>`;
+            row.innerHTML += `<th onclick="sortTable('${h}')">${h} 
+                <span style="font-size: 7px; color: #cbd5e1; display: inline-flex; flex-direction: column; vertical-align: middle; margin-left: 4px; line-height: 1;">
+                    <span style="margin-bottom: 2px;">▲</span>
+                    <span>▼</span>
+                </span>
+            </th>`;
         });
+    }
+
+    function sortTable(headerKey) {
+        sortDirections[headerKey] = !sortDirections[headerKey];
+        const isAscending = sortDirections[headerKey];
+        hitsData.sort((a, b) => {
+            let valA = a[headerKey], valB = b[headerKey];
+            if (!isNaN(valA) && !isNaN(valB)) return isAscending ? valA - valB : valB - valA;
+            return isAscending ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
+        });
+        renderTableBody(hitsData);
     }
 
     function renderTableBody(data) {
