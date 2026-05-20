@@ -16,7 +16,7 @@
         
         #table-area { flex: 1; overflow-y: auto; padding: 0 30px 20px 30px; background: white; }
         table { width: 100%; border-collapse: collapse; }
-        th { padding: 16px 12px; text-align: left; background: white; color: #64748b; font-size: 14px; border-bottom: 2px solid #e2e8f0; }
+        th { padding: 16px 12px; text-align: left; background: white; color: #64748b; font-size: 14px; border-bottom: 2px solid #e2e8f0; cursor: pointer; }
         .col-struct { min-width: 250px !important; width: 250px !important; }
         td { padding: 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; cursor: pointer; font-size: 14px; }
         tr:hover td { background: #f0f9ff; }
@@ -59,6 +59,13 @@
 
 <script>
     let hitsData = [], currentHeaders = [];
+    
+    // Thứ tự ưu tiên hiển thị ở cột phải
+    const detailOrder = [
+        'Lipinski Rule', 'MW', 'LogP', 'TPSA', 'HBD', 'HBA', 'Rotatable Bonds', 
+        'Synthetic Accessibility', 'SA Score'
+    ];
+    
     const fullNames = {
         'MW': 'Molecular Weight', 'LogP': 'LogP', 'TPSA': 'Topological Polar Surface Area',
         'HBD': 'Hydrogen Bond Donors', 'HBA': 'Hydrogen Bond Acceptors', 
@@ -96,7 +103,9 @@
     function renderHeaders() {
         const row = document.getElementById('table-head-row');
         row.innerHTML = '<th>ID</th><th class="col-struct">Structure</th>';
-        currentHeaders.forEach(h => row.innerHTML += `<th>${h}</th>`);
+        currentHeaders.forEach(h => {
+            row.innerHTML += `<th>${h} <span style="font-size: 10px; color: #cbd5e1;">↕</span></th>`;
+        });
     }
 
     function renderTableBody(data) {
@@ -127,8 +136,13 @@
         });
         
         det += '<div class="phys-box">';
-        Object.keys(fullNames).forEach(k => {
-            if(hit[k] !== undefined) det += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:13px;"><span>${fullNames[k]}:</span><b>${hit[k]}</b></div>`;
+        // Hiển thị theo thứ tự detailOrder đã định nghĩa
+        detailOrder.forEach(k => {
+            if(hit[k] !== undefined) {
+                det += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:13px;">
+                            <span>${fullNames[k] || k}:</span><b>${hit[k]}</b>
+                        </div>`;
+            }
         });
         det += '</div>';
 
