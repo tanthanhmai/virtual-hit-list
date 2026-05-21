@@ -3,12 +3,12 @@
 Welcome to the **Tan Mai Lab's Virtual Hit List** repository. 
 
 ## About the Project
-Following our extensive virtual screening campaigns, our laboratory has successfully identified a series of potential hit compounds using advanced **Computer-Aided Drug Design (CADD)** methodologies. 
+Following our extensive virtual screening campaigns, our laboratory has successfully identified a series of potential hit compounds using **Computer-Aided Drug Design (CADD)** methodologies. 
 
 We are committed to fostering open science and collaboration. Therefore, we are publicly releasing these findings to the scientific community. We invite medicinal chemists and fellow researchers to explore these hits and potentially evaluate them through experimental validation if conditions permit.
 
 ## Dashboard Access
-Quý đồng nghiệp (fellow researchers and colleagues) can access our interactive dashboard at the following address:
+Fellow researchers and colleagues can access our interactive dashboard at the following address:
 
 **[https://tanthanhmai.github.io/virtual-hit-list/](https://tanthanhmai.github.io/virtual-hit-list/)**
 
